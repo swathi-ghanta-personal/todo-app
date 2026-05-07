@@ -37,8 +37,8 @@
   --radius-md: 8px;
   --radius-lg: 12px;
 
-  /* Layout — centered main column */
-  --layout-max-width: 70.375rem; /* 1126px */
+  /* Layout — centered app column */
+  --layout-max-width: 40rem;
 
   /* Aliases for existing rules + derived UI */
   --text: var(--color-text-muted);
@@ -212,16 +212,231 @@ code {
   }
 }
 
-#app {
+/* —— Todo app —— */
+
+#app.app {
   width: 100%;
   max-width: var(--layout-max-width);
   margin-inline: auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
+  padding: var(--space-xl) var(--space-md);
   min-height: 100svh;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  align-items: stretch;
+}
+
+.app-header {
+  margin-bottom: var(--space-lg);
+  text-align: center;
+}
+
+.app-title {
+  margin: 0;
+  font-size: var(--font-size-h1);
+  line-height: var(--line-height-h1);
+  letter-spacing: var(--letter-spacing-h1);
+}
+
+.app-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  flex: 1;
+  padding: var(--space-lg);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
   box-sizing: border-box;
+}
+
+.todo-form {
+  margin: 0;
+}
+
+.todo-form-row {
+  display: grid;
+  gap: var(--space-sm);
+  grid-template-columns: 1fr auto;
+}
+
+.todo-form-label {
+  grid-column: 1 / -1;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.todo-form-input {
+  grid-column: 1;
+  min-width: 0;
+  padding: var(--space-sm) var(--space-md);
+  font: inherit;
+  color: var(--color-text);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-sizing: border-box;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.todo-form-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.todo-form-input:hover {
+  border-color: color-mix(in srgb, var(--color-border) 70%, var(--color-text-muted));
+}
+
+.todo-form-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.todo-form-button {
+  grid-column: 2;
+  padding: var(--space-sm) var(--space-md);
+  font: inherit;
+  font-weight: 600;
+  color: #fff;
+  background: var(--color-accent);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.15s ease,
+    transform 0.1s ease;
+}
+
+.todo-form-button:hover {
+  background: color-mix(in srgb, var(--color-accent) 92%, var(--color-text));
+}
+
+.todo-form-button:active {
+  transform: scale(0.98);
+}
+
+.todo-form-button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.todo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-height: 0;
+}
+
+.todo-list:empty {
+  display: none;
+}
+
+/* Li markup: .todo-item[.todo-item--completed] > .todo-item-checkbox + .todo-item-text + .todo-item-delete */
+.todo-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  color: var(--color-text);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  text-align: start;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.todo-item-checkbox {
+  flex-shrink: 0;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0;
+  accent-color: var(--color-success);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.todo-item-checkbox:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.todo-item-text {
+  flex: 1;
+  min-width: 0;
+  line-height: var(--line-height-body);
+}
+
+.todo-item-delete {
+  flex-shrink: 0;
+  padding: var(--space-xs) var(--space-sm);
+  font: inherit;
+  font-size: max(0.8125rem, 0.85em);
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.todo-item-delete:hover {
+  color: var(--color-text);
+  border-color: color-mix(in srgb, var(--color-border) 50%, var(--color-text-muted));
+  background: color-mix(in srgb, var(--color-surface) 40%, transparent);
+}
+
+.todo-item-delete:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.todo-item--completed {
+  background: color-mix(in srgb, var(--color-background) 88%, var(--color-text-muted));
+  border-color: color-mix(in srgb, var(--color-border) 92%, var(--color-text-muted));
+}
+
+.todo-item--completed .todo-item-text {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.12em;
+}
+
+@media (max-width: 480px) {
+  .todo-form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .todo-form-input,
+  .todo-form-button {
+    grid-column: 1;
+  }
+
+  .todo-form-button {
+    justify-self: stretch;
+    width: 100%;
+  }
+
+  #app.app {
+    padding: var(--space-md) var(--space-sm);
+  }
+
+  .app-main {
+    padding: var(--space-md);
+  }
 }
 
 #center {

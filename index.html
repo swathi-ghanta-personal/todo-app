@@ -7,7 +7,30 @@
     <title>todo-app</title>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app" class="app">
+      <header class="app-header">
+        <h1 class="app-title">To do list</h1>
+      </header>
+
+      <main class="app-main">
+        <form class="todo-form" id="todo-form" aria-label="Add a new to-do">
+          <div class="todo-form-row">
+            <label class="todo-form-label" for="todo-input">To-do description</label>
+            <input
+              type="text"
+              id="todo-input"
+              class="todo-form-input"
+              name="text"
+              placeholder="Add a to-do…"
+              autocomplete="off"
+            />
+            <button type="submit" class="todo-form-button">Add</button>
+          </div>
+        </form>
+
+        <ul class="todo-list" id="todo-list" aria-label="Your to-dos"></ul>
+      </main>
+    </div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
