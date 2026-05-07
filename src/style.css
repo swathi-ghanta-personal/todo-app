@@ -5,8 +5,14 @@
   --color-text: #12141a;
   --color-text-muted: #6b7280;
   --color-accent: #3d5afe;
-  --color-success: #0d9488;
+  --color-success: #0d948d;
   --color-border: #e6e8ed;
+  --page-gradient: linear-gradient(
+    152deg,
+    color-mix(in srgb, #c7d9f9 52%, white) 0%,
+    color-mix(in srgb, #d8cef5 40%, white) 48%,
+    color-mix(in srgb, #e9dff8 42%, white) 100%
+  );
 
   /* Spacing scale */
   --space-xs: 0.25rem; /* 4px at 16px root */
@@ -61,7 +67,10 @@
   letter-spacing: var(--letter-spacing-body);
   color-scheme: light dark;
   color: var(--color-text-muted);
-  background: var(--color-background);
+  background-color: var(--color-background);
+  background-image: var(--page-gradient);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -84,6 +93,12 @@
     --color-accent: #7c9cff;
     --color-success: #2dd4bf;
     --color-border: #2d2f38;
+    --page-gradient: linear-gradient(
+      152deg,
+      color-mix(in srgb, #1e2d4a 55%, #14151a) 0%,
+      color-mix(in srgb, #231c36 52%, #14151a) 45%,
+      color-mix(in srgb, #251e32 46%, #14151a) 100%
+    );
 
     --text: var(--color-text-muted);
     --text-h: var(--color-text);
@@ -255,15 +270,22 @@ code {
 }
 
 .todo-form-row {
+  position: relative;
   display: grid;
   gap: var(--space-sm);
   grid-template-columns: 1fr auto;
 }
 
 .todo-form-label {
-  grid-column: 1 / -1;
-  font-size: 0.875rem;
-  color: var(--color-text-muted);
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  border: 0;
+  white-space: nowrap;
 }
 
 .todo-form-input {
@@ -338,7 +360,7 @@ code {
   display: none;
 }
 
-/* Li markup: .todo-item[.todo-item--completed] > .todo-item-checkbox + .todo-item-text + .todo-item-delete */
+/* Li markup: .todo-item[.todo-item--completed] > .todo-item-checkbox + .todo-item-text + .todo-item-delete (Trash2 lucide svg) */
 .todo-item {
   display: flex;
   align-items: center;
@@ -377,10 +399,12 @@ code {
 
 .todo-item-delete {
   flex-shrink: 0;
-  padding: var(--space-xs) var(--space-sm);
-  font: inherit;
-  font-size: max(0.8125rem, 0.85em);
-  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-sm);
+  min-width: 2.5rem;
+  min-height: 2.25rem;
   color: var(--color-text-muted);
   background: transparent;
   border: 1px solid var(--color-border);
@@ -392,10 +416,16 @@ code {
     background 0.15s ease;
 }
 
+.todo-item-delete-icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
+}
+
 .todo-item-delete:hover {
-  color: var(--color-text);
-  border-color: color-mix(in srgb, var(--color-border) 50%, var(--color-text-muted));
-  background: color-mix(in srgb, var(--color-surface) 40%, transparent);
+  color: var(--color-accent);
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
 }
 
 .todo-item-delete:focus-visible {
