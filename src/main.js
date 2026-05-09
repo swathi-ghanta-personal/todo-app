@@ -1,12 +1,11 @@
 import './style.css'
 import { createElement as createLucideIcon, Trash2 } from 'lucide'
+import { supabase } from './supabase.js'
 
-/** @typedef {{ id: number; text: string; completed: boolean }} Todo */
+/** @typedef {{ id: number; text: string; is_complete: boolean; created_at: string }} Todo */
 
 /** @type {Todo[]} */
-const todos = []
-
-let nextId = 1
+let todos = []
 
 const listEl = document.querySelector('#todo-list')
 const formEl = document.querySelector('#todo-form')
@@ -15,19 +14,15 @@ const inputEl = document.querySelector('#todo-input')
 function render() {
   listEl.replaceChildren()
 
-  const ordered = [...todos].sort(
-    (a, b) => Number(a.completed) - Number(b.completed)
-  )
-
-  for (const todo of ordered) {
+  for (const todo of todos) {
     const item = document.createElement('li')
-    item.className = `todo-item${todo.completed ? ' todo-item--completed' : ''}`
+    item.className = `todo-item${todo.is_complete ? ' todo-item--completed' : ''}`
     item.dataset.id = String(todo.id)
 
     const checkbox = document.createElement('input')
     checkbox.type = 'checkbox'
     checkbox.className = 'todo-item-checkbox'
-    checkbox.checked = todo.completed
+    checkbox.checked = todo.is_complete
 
     const text = document.createElement('span')
     text.className = 'todo-item-text'
@@ -50,17 +45,43 @@ function render() {
   }
 }
 
-formEl.addEventListener('submit', (e) => {
+async function loadTodos() {
+  const { data, error } = await supabase
+    .from('todos')
+    .select('id, text, is_complete, created_at')
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    console.error('Failed to load todos:', error.message)
+    return
+  }
+
+  todos = data
+  render()
+}
+
+formEl.addEventListener('submit', async (e) => {
   e.preventDefault()
   const value = inputEl.value.trim()
   if (!value) return
 
-  todos.push({ id: nextId++, text: value, completed: false })
+  const { data, error } = await supabase
+    .from('todos')
+    .insert({ text: value, is_complete: false })
+    .select('id, text, is_complete, created_at')
+    .single()
+
+  if (error) {
+    console.error('Failed to add todo:', error.message)
+    return
+  }
+
+  todos.push(data)
   inputEl.value = ''
   render()
 })
 
-listEl.addEventListener('change', (e) => {
+listEl.addEventListener('change', async (e) => {
   const target = e.target
   if (!(target instanceof HTMLInputElement) || target.type !== 'checkbox') return
   if (!target.classList.contains('todo-item-checkbox')) return
@@ -69,21 +90,40 @@ listEl.addEventListener('change', (e) => {
   const todo = todos.find((t) => t.id === id)
   if (!todo) return
 
-  todo.completed = target.checked
+  const { error } = await supabase
+    .from('todos')
+    .update({ is_complete: target.checked })
+    .eq('id', id)
+
+  if (error) {
+    console.error('Failed to update todo:', error.message)
+    target.checked = todo.is_complete
+    return
+  }
+
+  todo.is_complete = target.checked
   render()
 })
 
-listEl.addEventListener('click', (e) => {
+listEl.addEventListener('click', async (e) => {
   const btn = e.target.closest('.todo-item-delete')
   if (!btn) return
 
   const item = btn.closest('.todo-item')
   const id = Number(item?.dataset.id)
-  const index = todos.findIndex((t) => t.id === id)
-  if (index === -1) return
 
-  todos.splice(index, 1)
+  const { error } = await supabase
+    .from('todos')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    console.error('Failed to delete todo:', error.message)
+    return
+  }
+
+  todos = todos.filter((t) => t.id !== id)
   render()
 })
 
-render()
+loadTodos()

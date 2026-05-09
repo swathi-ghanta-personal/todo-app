@@ -243,7 +243,7 @@ code {
 
 .app-header {
   margin-bottom: var(--space-lg);
-  text-align: center;
+  text-align: start;
 }
 
 .app-title {
