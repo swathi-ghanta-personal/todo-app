@@ -10,7 +10,25 @@
     <div id="app" class="app">
       <header class="app-header">
         <h1 class="app-title">To do list</h1>
+        <div id="auth-user-bar" class="auth-user-bar" hidden>
+          <span id="auth-user-email" class="auth-user-email"></span>
+          <button type="button" id="auth-signout-btn" class="auth-signout-btn">Sign out</button>
+        </div>
       </header>
+
+      <section id="auth-section" class="auth-section" hidden>
+        <div class="auth-tabs" role="tablist">
+          <button type="button" class="auth-tab auth-tab--active" data-mode="signin" role="tab" aria-selected="true">Sign in</button>
+          <button type="button" class="auth-tab" data-mode="signup" role="tab" aria-selected="false">Create account</button>
+        </div>
+        <form id="auth-form" class="auth-form" novalidate>
+          <input type="email" id="auth-email-input" class="auth-form-input" placeholder="Email address" autocomplete="email" required />
+          <input type="password" id="auth-password-input" class="auth-form-input" placeholder="Password" autocomplete="current-password" required />
+          <p id="auth-error" class="auth-error" aria-live="polite" hidden></p>
+          <p id="auth-message" class="auth-message" aria-live="polite" hidden></p>
+          <button type="submit" id="auth-submit-btn" class="auth-form-button">Sign in</button>
+        </form>
+      </section>
 
       <main class="app-main">
         <form class="todo-form" id="todo-form" aria-label="Add a new to-do">

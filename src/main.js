@@ -2,14 +2,32 @@ import './style.css'
 import { createElement as createLucideIcon, Trash2 } from 'lucide'
 import { supabase } from './supabase.js'
 
-/** @typedef {{ id: number; text: string; is_complete: boolean; created_at: string }} Todo */
+/** @typedef {{ id: number; text: string; is_complete: boolean; created_at: string; user_id: string }} Todo */
 
 /** @type {Todo[]} */
 let todos = []
 
+/** @type {import('@supabase/supabase-js').User | null} */
+let currentUser = null
+
 const listEl = document.querySelector('#todo-list')
 const formEl = document.querySelector('#todo-form')
 const inputEl = document.querySelector('#todo-input')
+
+const authSectionEl = document.querySelector('#auth-section')
+const authUserBarEl = document.querySelector('#auth-user-bar')
+const authUserEmailEl = document.querySelector('#auth-user-email')
+const authSignoutBtn = document.querySelector('#auth-signout-btn')
+const authFormEl = document.querySelector('#auth-form')
+const authEmailInputEl = document.querySelector('#auth-email-input')
+const authPasswordInputEl = document.querySelector('#auth-password-input')
+const authErrorEl = document.querySelector('#auth-error')
+const authMessageEl = document.querySelector('#auth-message')
+const authSubmitBtn = document.querySelector('#auth-submit-btn')
+const authTabs = document.querySelectorAll('.auth-tab')
+
+/** @type {'signin' | 'signup'} */
+let authMode = 'signin'
 
 function render() {
   listEl.replaceChildren()
@@ -45,10 +63,145 @@ function render() {
   }
 }
 
+function renderAuthUI() {
+  const isEmailUser = currentUser && currentUser.email && !currentUser.is_anonymous
+
+  authUserBarEl.hidden = !isEmailUser
+  authSectionEl.hidden = !!isEmailUser
+
+  if (isEmailUser) {
+    authUserEmailEl.textContent = currentUser.email
+  }
+}
+
+authTabs.forEach((tab) => {
+  tab.addEventListener('click', () => {
+    authMode = /** @type {'signin' | 'signup'} */ (tab.dataset.mode)
+    authTabs.forEach((t) => {
+      t.classList.toggle('auth-tab--active', t.dataset.mode === authMode)
+      t.setAttribute('aria-selected', String(t.dataset.mode === authMode))
+    })
+    authSubmitBtn.textContent = authMode === 'signin' ? 'Sign in' : 'Create account'
+    authErrorEl.hidden = true
+    authErrorEl.textContent = ''
+    authMessageEl.hidden = true
+    authMessageEl.textContent = ''
+  })
+})
+
+/** @param {string} raw */
+function friendlyAuthError(raw) {
+  const msg = raw.toLowerCase()
+  if (msg.includes('invalid login credentials') || msg.includes('invalid credentials')) {
+    return 'Incorrect email or password. Please try again.'
+  }
+  if (msg.includes('email not confirmed')) {
+    return 'Please check your inbox and confirm your email before signing in.'
+  }
+  if (msg.includes('user already registered') || msg.includes('already been registered')) {
+    return 'An account with this email already exists. Try signing in instead.'
+  }
+  if (msg.includes('password should be')) {
+    return 'Password must be at least 6 characters.'
+  }
+  if (msg.includes('unable to validate email')) {
+    return 'Please enter a valid email address.'
+  }
+  return raw
+}
+
+/** @param {string} msg */
+function showAuthError(msg) {
+  authErrorEl.textContent = msg
+  authErrorEl.hidden = false
+}
+
+/** @param {string} msg */
+function showAuthMessage(msg) {
+  authMessageEl.textContent = msg
+  authMessageEl.hidden = false
+}
+
+authFormEl.addEventListener('submit', async (e) => {
+  e.preventDefault()
+  const email = authEmailInputEl.value.trim()
+  const password = authPasswordInputEl.value
+
+  authErrorEl.hidden = true
+  authMessageEl.hidden = true
+  authSubmitBtn.disabled = true
+
+  let data, error
+
+  if (authMode === 'signup' && currentUser?.is_anonymous) {
+    // Upgrade the anonymous account in-place: same user_id means all existing
+    // todos carry over automatically — no data migration needed
+    ;({ data, error } = await supabase.auth.updateUser({ email, password }))
+  } else if (authMode === 'signup') {
+    ;({ data, error } = await supabase.auth.signUp({ email, password }))
+  } else {
+    ;({ data, error } = await supabase.auth.signInWithPassword({ email, password }))
+  }
+
+  authSubmitBtn.disabled = false
+
+  if (error) {
+    showAuthError(friendlyAuthError(error.message))
+    return
+  }
+
+  // signUp silently "succeeds" for existing emails — identities will be empty
+  if (authMode === 'signup' && !currentUser?.is_anonymous && data.user?.identities?.length === 0) {
+    showAuthError('An account with this email already exists. Try signing in instead.')
+    return
+  }
+
+  currentUser = data.user
+  authFormEl.reset()
+
+  // Email confirmation pending: signUp returns no session; updateUser leaves
+  // the user anonymous until the confirmation link is clicked
+  const needsConfirmation = authMode !== 'signin' && (!data.session || currentUser?.is_anonymous)
+  if (needsConfirmation) {
+    showAuthMessage('Check your inbox to confirm your email address. Your to-dos are saved and will be ready when you sign in.')
+    return
+  }
+
+  renderAuthUI()
+  await loadTodos()
+})
+
+authSignoutBtn.addEventListener('click', async () => {
+  await supabase.auth.signOut()
+  await ensureSession()
+  renderAuthUI()
+  await loadTodos()
+})
+
+async function ensureSession() {
+  const { data: { session } } = await supabase.auth.getSession()
+
+  if (session) {
+    currentUser = session.user
+    return
+  }
+
+  const { data, error } = await supabase.auth.signInAnonymously()
+  if (error) {
+    console.error('Failed to sign in anonymously:', error.message)
+    return
+  }
+
+  currentUser = data.user
+}
+
 async function loadTodos() {
+  if (!currentUser) return
+
   const { data, error } = await supabase
     .from('todos')
     .select('id, text, is_complete, created_at')
+    .eq('user_id', currentUser.id)
     .order('created_at', { ascending: true })
 
   if (error) {
@@ -126,4 +279,10 @@ listEl.addEventListener('click', async (e) => {
   render()
 })
 
-loadTodos()
+async function init() {
+  await ensureSession()
+  renderAuthUI()
+  await loadTodos()
+}
+
+init()
