@@ -612,6 +612,11 @@ code {
   flex-shrink: 0;
 }
 
+/* Author `display: flex` wins over the HTML `hidden` attribute otherwise — bar stays visible after sign out */
+.auth-user-bar[hidden] {
+  display: none !important;
+}
+
 .auth-user-email {
   font-size: 0.875rem;
   color: var(--color-text-muted);
@@ -658,6 +663,10 @@ code {
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
+}
+
+.auth-section[hidden] {
+  display: none !important;
 }
 
 .auth-tabs {

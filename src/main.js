@@ -63,14 +63,23 @@ function render() {
   }
 }
 
+/** @param {import('@supabase/supabase-js').User | null | undefined} user */
+function isEmailAccount(user) {
+  if (!user?.email?.trim()) return false
+  // Anonymous sessions must not show the user bar; only treat as anonymous when flag is explicitly true.
+  return user.is_anonymous !== true
+}
+
 function renderAuthUI() {
-  const isEmailUser = currentUser && currentUser.email && !currentUser.is_anonymous
+  const isEmailUser = isEmailAccount(currentUser)
 
   authUserBarEl.hidden = !isEmailUser
   authSectionEl.hidden = !!isEmailUser
 
   if (isEmailUser) {
     authUserEmailEl.textContent = currentUser.email
+  } else {
+    authUserEmailEl.textContent = ''
   }
 }
 
@@ -133,7 +142,7 @@ authFormEl.addEventListener('submit', async (e) => {
 
   let data, error
 
-  if (authMode === 'signup' && currentUser?.is_anonymous) {
+  if (authMode === 'signup' && currentUser?.is_anonymous === true) {
     // Upgrade the anonymous account in-place: same user_id means all existing
     // todos carry over automatically — no data migration needed
     ;({ data, error } = await supabase.auth.updateUser({ email, password }))
@@ -151,7 +160,7 @@ authFormEl.addEventListener('submit', async (e) => {
   }
 
   // signUp silently "succeeds" for existing emails — identities will be empty
-  if (authMode === 'signup' && !currentUser?.is_anonymous && data.user?.identities?.length === 0) {
+  if (authMode === 'signup' && currentUser?.is_anonymous !== true && data.user?.identities?.length === 0) {
     showAuthError('An account with this email already exists. Try signing in instead.')
     return
   }
@@ -172,10 +181,18 @@ authFormEl.addEventListener('submit', async (e) => {
 })
 
 authSignoutBtn.addEventListener('click', async () => {
-  await supabase.auth.signOut()
+  authSignoutBtn.disabled = true
+  currentUser = null
+  authUserEmailEl.textContent = ''
+  renderAuthUI()
+
+  const { error } = await supabase.auth.signOut()
+  if (error) console.error('Sign out failed:', error.message)
+
   await ensureSession()
   renderAuthUI()
   await loadTodos()
+  authSignoutBtn.disabled = false
 })
 
 async function ensureSession() {
@@ -189,6 +206,7 @@ async function ensureSession() {
   const { data, error } = await supabase.auth.signInAnonymously()
   if (error) {
     console.error('Failed to sign in anonymously:', error.message)
+    currentUser = null
     return
   }
 
@@ -283,6 +301,11 @@ async function init() {
   await ensureSession()
   renderAuthUI()
   await loadTodos()
+
+  supabase.auth.onAuthStateChange((_event, session) => {
+    currentUser = session?.user ?? null
+    renderAuthUI()
+  })
 }
 
 init()
