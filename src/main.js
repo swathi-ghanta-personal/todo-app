@@ -2,7 +2,7 @@ import './style.css'
 import { createElement as createLucideIcon, Trash2 } from 'lucide'
 import { supabase } from './supabase.js'
 
-/** @typedef {{ id: number; text: string; is_complete: boolean; created_at: string; user_id: string }} Todo */
+/** @typedef {{ id: number; text: string; is_complete: boolean; created_at: string; user_id: string; due_date: string | null }} Todo */
 
 /** @type {Todo[]} */
 let todos = []
@@ -13,6 +13,16 @@ let currentUser = null
 const listEl = document.querySelector('#todo-list')
 const formEl = document.querySelector('#todo-form')
 const inputEl = document.querySelector('#todo-input')
+const dueInputEl = document.querySelector('#todo-due-input')
+
+function syncTodoDueDateFieldColor() {
+  dueInputEl?.classList.toggle('todo-form-date--has-value', Boolean(dueInputEl?.value))
+}
+
+if (dueInputEl) {
+  dueInputEl.addEventListener('input', syncTodoDueDateFieldColor)
+  dueInputEl.addEventListener('change', syncTodoDueDateFieldColor)
+}
 
 /** @type {HTMLDialogElement} */
 const authDialogEl = document.querySelector('#auth-dialog')
@@ -41,12 +51,36 @@ let authMode = 'signin'
 /** When true, email/password form panel is visible (non–email-account users only). */
 let authFormOpen = false
 
+/** @returns {string} Local calendar date as YYYY-MM-DD */
+function localDateYmd() {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+/** @param {string} ymd */
+function formatDueDateLabel(ymd) {
+  const parts = ymd.split('-').map(Number)
+  if (parts.length !== 3 || parts.some(Number.isNaN)) return ymd
+  const [y, mo, day] = parts
+  const dt = new Date(y, mo - 1, day)
+  return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+/** @param {Todo} todo */
+function isTodoOverdue(todo) {
+  return Boolean(todo.due_date && !todo.is_complete && todo.due_date < localDateYmd())
+}
+
 function render() {
   listEl.replaceChildren()
 
   for (const todo of todos) {
+    const overdue = isTodoOverdue(todo)
     const item = document.createElement('li')
-    item.className = `todo-item${todo.is_complete ? ' todo-item--completed' : ''}`
+    item.className = `todo-item${todo.is_complete ? ' todo-item--completed' : ''}${overdue ? ' todo-item--overdue' : ''}`
     item.dataset.id = String(todo.id)
 
     const checkbox = document.createElement('input')
@@ -54,14 +88,28 @@ function render() {
     checkbox.className = 'todo-item-checkbox'
     checkbox.checked = todo.is_complete
 
+    const body = document.createElement('div')
+    body.className = 'todo-item-body'
+
     const text = document.createElement('span')
     text.className = 'todo-item-text'
     text.textContent = todo.text
 
+    body.appendChild(text)
+
+    if (todo.due_date) {
+      const due = document.createElement('time')
+      due.className = 'todo-item-due'
+      due.dateTime = todo.due_date
+      due.textContent = `Due ${formatDueDateLabel(todo.due_date)}`
+      body.appendChild(due)
+    }
+
     const del = document.createElement('button')
     del.type = 'button'
     del.className = 'todo-item-delete'
-    del.setAttribute('aria-label', `Delete to-do: ${todo.text}`)
+    const dueBit = todo.due_date ? `, due ${formatDueDateLabel(todo.due_date)}` : ''
+    del.setAttribute('aria-label', `Delete to-do: ${todo.text}${dueBit}`)
     const icon = createLucideIcon(Trash2, {
       class: 'todo-item-delete-icon',
       'aria-hidden': 'true',
@@ -70,7 +118,7 @@ function render() {
     })
     del.appendChild(icon)
 
-    item.append(checkbox, text, del)
+    item.append(checkbox, body, del)
     listEl.appendChild(item)
   }
 }
@@ -291,11 +339,25 @@ async function ensureSession() {
 async function loadTodos() {
   if (!currentUser) return
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('todos')
-    .select('id, text, is_complete, created_at')
+    .select('id, text, is_complete, created_at, due_date')
     .eq('user_id', currentUser.id)
+    .order('due_date', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: true })
+
+  if (error && /due_date|schema cache/i.test(error.message)) {
+    ;({ data, error } = await supabase
+      .from('todos')
+      .select('id, text, is_complete, created_at')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: true }))
+    if (data) {
+      for (const row of data) {
+        row.due_date = null
+      }
+    }
+  }
 
   if (error) {
     console.error('Failed to load todos:', error.message)
@@ -311,9 +373,15 @@ formEl.addEventListener('submit', async (e) => {
   const value = inputEl.value.trim()
   if (!value) return
 
+  const dueRaw = (dueInputEl?.value ?? '').trim()
+  const due_date = dueRaw || null
+
+  const payload = { text: value, is_complete: false }
+  if (dueRaw) payload.due_date = dueRaw
+
   const { data, error } = await supabase
     .from('todos')
-    .insert({ text: value, is_complete: false })
+    .insert(payload)
     .select('id, text, is_complete, created_at')
     .single()
 
@@ -322,8 +390,22 @@ formEl.addEventListener('submit', async (e) => {
     return
   }
 
+  data.due_date = due_date
+
   todos.push(data)
   inputEl.value = ''
+  if (dueInputEl) dueInputEl.value = ''
+  syncTodoDueDateFieldColor()
+  todos.sort((a, b) => {
+    const ad = a.due_date ?? null
+    const bd = b.due_date ?? null
+    if (ad == null && bd == null) return 0
+    if (ad == null) return 1
+    if (bd == null) return -1
+    const byDue = ad.localeCompare(bd)
+    if (byDue !== 0) return byDue
+    return a.created_at.localeCompare(b.created_at)
+  })
   render()
 })
 
@@ -376,6 +458,7 @@ async function init() {
   await ensureSession()
   renderAuthUI()
   await loadTodos()
+  syncTodoDueDateFieldColor()
 
   supabase.auth.onAuthStateChange((_event, session) => {
     currentUser = session?.user ?? null
