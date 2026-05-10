@@ -20,6 +20,16 @@ function syncTodoDueDateFieldColor() {
 }
 
 if (dueInputEl) {
+  dueInputEl.addEventListener('focus', () => {
+    dueInputEl.type = 'date'
+  })
+
+  dueInputEl.addEventListener('blur', () => {
+    if (!dueInputEl.value) {
+      dueInputEl.type = 'text'
+    }
+  })
+
   dueInputEl.addEventListener('input', syncTodoDueDateFieldColor)
   dueInputEl.addEventListener('change', syncTodoDueDateFieldColor)
 }
@@ -262,6 +272,10 @@ authFormEl.addEventListener('submit', async (e) => {
   authMessageEl.hidden = true
   authSubmitBtn.disabled = true
 
+  // Snapshot any anonymous todos before switching sessions, so we can migrate
+  // them to the signed-in account if the user_id is about to change.
+  const anonymousTodos = currentUser?.is_anonymous === true ? [...todos] : []
+
   let data, error
 
   if (authMode === 'signup' && currentUser?.is_anonymous === true) {
@@ -296,6 +310,20 @@ authFormEl.addEventListener('submit', async (e) => {
   if (needsConfirmation) {
     showAuthMessage('Check your inbox to confirm your email address. Your to-dos are saved and will be ready when you sign in.')
     return
+  }
+
+  // For sign-in, the user_id changed — migrate any anonymous todos to the new account
+  if (authMode === 'signin' && anonymousTodos.length > 0 && currentUser) {
+    const rows = anonymousTodos.map((t) => ({
+      text: t.text,
+      is_complete: t.is_complete,
+      due_date: t.due_date ?? null,
+      user_id: currentUser.id,
+    }))
+    const { error: migrateErr } = await supabase.from('todos').insert(rows)
+    if (migrateErr) {
+      console.error('Failed to migrate anonymous todos:', migrateErr.message)
+    }
   }
 
   renderAuthUI()
@@ -394,7 +422,10 @@ formEl.addEventListener('submit', async (e) => {
 
   todos.push(data)
   inputEl.value = ''
-  if (dueInputEl) dueInputEl.value = ''
+  if (dueInputEl) {
+    dueInputEl.value = ''
+    dueInputEl.type = 'text'
+  }
   syncTodoDueDateFieldColor()
   todos.sort((a, b) => {
     const ad = a.due_date ?? null

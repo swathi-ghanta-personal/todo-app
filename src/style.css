@@ -280,7 +280,7 @@ code {
   position: relative;
   display: grid;
   gap: var(--space-sm);
-  grid-template-columns: 1fr minmax(10rem, auto) auto;
+  grid-template-columns: 1fr 10.5rem auto;
   align-items: center;
 }
 
@@ -313,6 +313,7 @@ code {
 
 .todo-form-date {
   grid-column: 2;
+  width: 100%;
   min-width: 0;
   padding: var(--space-sm) var(--space-md);
   font: inherit;
