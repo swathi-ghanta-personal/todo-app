@@ -10,25 +10,33 @@
     <div id="app" class="app">
       <header class="app-header">
         <h1 class="app-title">To do list</h1>
+        <div id="auth-header-actions" class="auth-header-actions" hidden>
+          <button
+            type="button"
+            id="auth-open-signin"
+            class="auth-header-btn"
+            data-mode="signin"
+            aria-controls="auth-dialog"
+            aria-expanded="false"
+          >
+            Sign in
+          </button>
+          <button
+            type="button"
+            id="auth-open-signup"
+            class="auth-header-btn"
+            data-mode="signup"
+            aria-controls="auth-dialog"
+            aria-expanded="false"
+          >
+            Create account
+          </button>
+        </div>
         <div id="auth-user-bar" class="auth-user-bar" hidden>
           <span id="auth-user-email" class="auth-user-email"></span>
           <button type="button" id="auth-signout-btn" class="auth-signout-btn">Sign out</button>
         </div>
       </header>
-
-      <section id="auth-section" class="auth-section" hidden>
-        <div class="auth-tabs" role="tablist">
-          <button type="button" class="auth-tab auth-tab--active" data-mode="signin" role="tab" aria-selected="true">Sign in</button>
-          <button type="button" class="auth-tab" data-mode="signup" role="tab" aria-selected="false">Create account</button>
-        </div>
-        <form id="auth-form" class="auth-form" novalidate>
-          <input type="email" id="auth-email-input" class="auth-form-input" placeholder="Email address" autocomplete="email" required />
-          <input type="password" id="auth-password-input" class="auth-form-input" placeholder="Password" autocomplete="current-password" required />
-          <p id="auth-error" class="auth-error" aria-live="polite" hidden></p>
-          <p id="auth-message" class="auth-message" aria-live="polite" hidden></p>
-          <button type="submit" id="auth-submit-btn" class="auth-form-button">Sign in</button>
-        </form>
-      </section>
 
       <main class="app-main">
         <form class="todo-form" id="todo-form" aria-label="Add a new to-do">
@@ -49,6 +57,33 @@
         <ul class="todo-list" id="todo-list" aria-label="Your to-dos"></ul>
       </main>
     </div>
+
+    <dialog id="auth-dialog" class="auth-modal" aria-labelledby="auth-dialog-title">
+      <div class="auth-modal-surface">
+        <h2 id="auth-dialog-title" class="auth-modal-title">Sign in</h2>
+        <form id="auth-form" class="auth-form" novalidate aria-labelledby="auth-dialog-title">
+          <input type="email" id="auth-email-input" class="auth-form-input" placeholder="Email address" autocomplete="email" required />
+          <input type="password" id="auth-password-input" class="auth-form-input" placeholder="Password" autocomplete="current-password" required />
+          <p id="auth-error" class="auth-error" aria-live="polite" hidden></p>
+          <p id="auth-message" class="auth-message" aria-live="polite" hidden></p>
+          <div class="auth-form-actions">
+            <button type="button" id="auth-cancel-btn" class="auth-cancel-btn">Cancel</button>
+            <button type="submit" id="auth-submit-btn" class="auth-form-button">Sign in</button>
+          </div>
+        </form>
+        <div class="auth-modal-footer">
+          <p id="auth-footer-signin-copy" class="auth-modal-switch">
+            Don‘t have an account?
+            <button type="button" class="auth-modal-link" id="auth-switch-to-signup">Sign up</button>
+          </p>
+          <p id="auth-footer-signup-copy" class="auth-modal-switch">
+            Already have an account?
+            <button type="button" class="auth-modal-link" id="auth-switch-to-signin">Sign in</button>
+          </p>
+        </div>
+      </div>
+    </dialog>
+
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

@@ -14,7 +14,13 @@ const listEl = document.querySelector('#todo-list')
 const formEl = document.querySelector('#todo-form')
 const inputEl = document.querySelector('#todo-input')
 
-const authSectionEl = document.querySelector('#auth-section')
+/** @type {HTMLDialogElement} */
+const authDialogEl = document.querySelector('#auth-dialog')
+const authDialogTitleEl = document.querySelector('#auth-dialog-title')
+const authHeaderActionsEl = document.querySelector('#auth-header-actions')
+const authOpenSigninBtn = document.querySelector('#auth-open-signin')
+const authOpenSignupBtn = document.querySelector('#auth-open-signup')
+const authCancelBtn = document.querySelector('#auth-cancel-btn')
 const authUserBarEl = document.querySelector('#auth-user-bar')
 const authUserEmailEl = document.querySelector('#auth-user-email')
 const authSignoutBtn = document.querySelector('#auth-signout-btn')
@@ -24,10 +30,16 @@ const authPasswordInputEl = document.querySelector('#auth-password-input')
 const authErrorEl = document.querySelector('#auth-error')
 const authMessageEl = document.querySelector('#auth-message')
 const authSubmitBtn = document.querySelector('#auth-submit-btn')
-const authTabs = document.querySelectorAll('.auth-tab')
+const authFooterSigninCopyEl = document.querySelector('#auth-footer-signin-copy')
+const authFooterSignupCopyEl = document.querySelector('#auth-footer-signup-copy')
+const authSwitchToSignupBtn = document.querySelector('#auth-switch-to-signup')
+const authSwitchToSigninBtn = document.querySelector('#auth-switch-to-signin')
 
 /** @type {'signin' | 'signup'} */
 let authMode = 'signin'
+
+/** When true, email/password form panel is visible (non–email-account users only). */
+let authFormOpen = false
 
 function render() {
   listEl.replaceChildren()
@@ -70,11 +82,32 @@ function isEmailAccount(user) {
   return user.is_anonymous !== true
 }
 
+function syncHeaderTriggers() {
+  authOpenSigninBtn.setAttribute('aria-expanded', String(authFormOpen && authMode === 'signin'))
+  authOpenSignupBtn.setAttribute('aria-expanded', String(authFormOpen && authMode === 'signup'))
+  authOpenSigninBtn.classList.toggle('auth-header-btn--active', authFormOpen && authMode === 'signin')
+  authOpenSignupBtn.classList.toggle('auth-header-btn--active', authFormOpen && authMode === 'signup')
+}
+
+function syncAuthModalFooter() {
+  authFooterSigninCopyEl.hidden = authMode !== 'signin'
+  authFooterSignupCopyEl.hidden = authMode !== 'signup'
+}
+
 function renderAuthUI() {
   const isEmailUser = isEmailAccount(currentUser)
 
+  if (isEmailUser) {
+    authFormOpen = false
+    if (authDialogEl.open) authDialogEl.close()
+  }
+
   authUserBarEl.hidden = !isEmailUser
-  authSectionEl.hidden = !!isEmailUser
+  authHeaderActionsEl.hidden = !!isEmailUser
+
+  authSubmitBtn.textContent = authMode === 'signin' ? 'Sign in' : 'Create account'
+  syncHeaderTriggers()
+  syncAuthModalFooter()
 
   if (isEmailUser) {
     authUserEmailEl.textContent = currentUser.email
@@ -83,19 +116,60 @@ function renderAuthUI() {
   }
 }
 
-authTabs.forEach((tab) => {
-  tab.addEventListener('click', () => {
-    authMode = /** @type {'signin' | 'signup'} */ (tab.dataset.mode)
-    authTabs.forEach((t) => {
-      t.classList.toggle('auth-tab--active', t.dataset.mode === authMode)
-      t.setAttribute('aria-selected', String(t.dataset.mode === authMode))
-    })
-    authSubmitBtn.textContent = authMode === 'signin' ? 'Sign in' : 'Create account'
-    authErrorEl.hidden = true
-    authErrorEl.textContent = ''
-    authMessageEl.hidden = true
-    authMessageEl.textContent = ''
+authDialogEl.addEventListener('close', () => {
+  authFormOpen = false
+  authFormEl.reset()
+  authErrorEl.hidden = true
+  authErrorEl.textContent = ''
+  authMessageEl.hidden = true
+  authMessageEl.textContent = ''
+  syncHeaderTriggers()
+})
+
+authDialogEl.addEventListener('click', (e) => {
+  if (e.target === authDialogEl) authDialogEl.close()
+})
+
+/** @param {'signin' | 'signup'} mode */
+function openAuthPanel(mode) {
+  authMode = mode
+  authFormOpen = true
+  authDialogTitleEl.textContent = authMode === 'signin' ? 'Sign in' : 'Create account'
+  authErrorEl.hidden = true
+  authErrorEl.textContent = ''
+  authMessageEl.hidden = true
+  authMessageEl.textContent = ''
+  if (!authDialogEl.open) {
+    authDialogEl.showModal()
+  }
+  renderAuthUI()
+  requestAnimationFrame(() => {
+    authEmailInputEl.focus()
   })
+}
+
+function closeAuthPanel() {
+  if (authDialogEl.open) authDialogEl.close()
+}
+
+authOpenSigninBtn.addEventListener('click', () => {
+  openAuthPanel('signin')
+})
+
+authOpenSignupBtn.addEventListener('click', () => {
+  openAuthPanel('signup')
+})
+
+authSwitchToSignupBtn.addEventListener('click', () => {
+  openAuthPanel('signup')
+})
+
+authSwitchToSigninBtn.addEventListener('click', () => {
+  openAuthPanel('signin')
+})
+
+authCancelBtn.addEventListener('click', () => {
+  closeAuthPanel()
 })
 
 /** @param {string} raw */
@@ -184,6 +258,7 @@ authSignoutBtn.addEventListener('click', async () => {
   authSignoutBtn.disabled = true
   currentUser = null
   authUserEmailEl.textContent = ''
+  closeAuthPanel()
   renderAuthUI()
 
   const { error } = await supabase.auth.signOut()
